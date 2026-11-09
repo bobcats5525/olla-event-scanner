@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OLLA Event Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      text-align: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+    }
+    button {
+      padding: 16px;
+      margin: 10px;
+      width: 90%;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      background: #176b36;
+      color: white;
+    }
+    #reader {
+      width: 100%;
+      margin: 20px auto;
+    }
+    #status {
+      font-size: 18px;
+      margin: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>OLLA EVENT CHECK-IN</h1>
+    <h2>Pig Roast & Marketplace</h2>
+
+    <p id="status">Ready to scan</p>
+
+    <button id="startButton" onclick="startScanner()">
+      START CAMERA
+    </button>
+
+    <div id="reader"></div>
+  </div>
+
+<script>
+  var scanner = null;
+  var running = false;
+  var processing = false;
+
+  function setStatus(message) {
+    document.getElementById("status").innerText = message;
+  }
+
+  function startScanner() {
+    if (running || processing) return;
+
+    if (typeof Html5Qrcode === "undefined") {
+      setStatus("Scanner library failed to load.");
+      return;
+    }
+
+    scanner = new Html5Qrcode("reader");
+
+    setStatus("Requesting camera access...");
+
+    scanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+
+      function(decodedText) {
+        if (processing) return;
+
+        var match = decodedText.match(/[?&]ticket=([^&]+)/i);
+
+        if (!match) {
+          setStatus("Invalid OLLA ticket QR code.");
+          return;
+        }
+
+        var ticketId;
+
+        try {
+          ticketId = decodeURIComponent(match[1]);
+        } catch (e) {
+          ticketId = match[1];
+        }
+
+        processing = true;
+        scanner.pause(true);
+
+        setStatus("Ticket scanned: " + ticketId);
+
+        if (window.opener) {
+          window.opener.postMessage({
+            type: "OLLA_TICKET",
+            ticketId: ticketId
+          }, "*");
+
+          setStatus("Ticket sent! Waiting for next guest.");
+        } else {
+          setStatus("Please open this scanner from the OLLA check-in page.");
+        }
+      },
+
+      function(error) {
+        // Normal scanning feedback.
+      }
+
+    ).then(function() {
+      running = true;
+      setStatus("CAMERA ACTIVE – READY TO SCAN");
+      document.getElementById("startButton").innerText = "CAMERA ACTIVE";
+    }).catch(function(error) {
+      setStatus("CAMERA ERROR: " + error);
+      scanner = null;
+    });
+  }
+</script>
+</body>
+</html>
