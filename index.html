@@ -102,16 +102,10 @@
 
         setStatus("Ticket scanned: " + ticketId);
 
-        if (window.opener) {
-          window.opener.postMessage({
-            type: "OLLA_TICKET",
-            ticketId: ticketId
-          }, "*");
+     localStorage.setItem("OLLA_TICKET", ticketId);
 
-          setStatus("Ticket sent! Waiting for next guest.");
-        } else {
-          setStatus("Please open this scanner from the OLLA check-in page.");
-        }
+        setStatus("Ticket sent! Waiting for next guest.");
+
       },
 
       function(error) {
